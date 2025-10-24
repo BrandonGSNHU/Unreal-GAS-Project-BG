@@ -1,0 +1,28 @@
+# Unreal Engine Project Files to Ignore
+
+# Build products
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+
+# Visual Studio files
+.vs/
+*.sln
+*.suo
+*.opensdf
+*.sdf
+*.VC.db
+
+# Build folders per platform
+Build/*/Binaries/
+
+# Mac and Windows junk
+.DS_Store
+Thumbs.db
+
+# User-specific files
+*.log
+*.tmp
+*.user
+*.userprefs
