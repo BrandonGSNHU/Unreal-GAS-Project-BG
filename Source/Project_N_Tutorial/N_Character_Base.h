@@ -36,6 +36,11 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem")
 	EGameplayEffectReplicationMode ASCReplicationMode = EGameplayEffectReplicationMode::Mixed;
 
+	// We want editanywhere so we can see all of it in the details panel, read and write to modify it in blueprints
+	// and its going under the ability system category
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "AbilitySystem")
+	TArray<TSubclassOf<UGameplayAbility>> StartingAbilities;
+
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
@@ -52,5 +57,14 @@ public:
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 	// Class is no longer needed in this line since we included the AbilitySystemComponent.h
 	virtual UAbilitySystemComponent* GetAbilitySystemComponent() const override;
+
+	UFUNCTION(BlueprintCallable, Category = "AbilitySystem")
+	TArray<FGameplayAbilitySpecHandle> GrantAbilities(TArray<TSubclassOf<UGameplayAbility>> AbilitiesToGrant);
+
+	UFUNCTION(BlueprintCallable, Category = "AbilitySystem")
+	void RemoveAbilities(TArray<FGameplayAbilitySpecHandle> AbilityHandlesToRemove);
+
+	UFUNCTION(BlueprintCallable, Category = "AbilitySystem")
+	void SendAbilitiesChangedEvent();
 
 };

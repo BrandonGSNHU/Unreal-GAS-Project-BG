@@ -2,10 +2,11 @@
 
 
 #include "N_Character_Base.h"
-
+#include "AbilitySystemBlueprintLibrary.h"
 #include "Components/CapsuleComponent.h"
+#include "ProjectNAbilitySystemComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-//#include "Project_N_Tutorial/GameplayAbilitySystem/Attributes/BasicAttributeSet.h"
+
 
 // Sets default values
 AN_Character_Base::AN_Character_Base()
@@ -16,7 +17,7 @@ AN_Character_Base::AN_Character_Base()
 	// Add the Ability System Component
 	// First we create our default subobject for the Ability System Component. This is basically 
 	// adding the component to our character and naming it "AbilitySystemComponent".
-	AbilitySystemComponent = CreateDefaultSubobject<UAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
+	AbilitySystemComponent = CreateDefaultSubobject<UProjectNAbilitySystemComponent>(TEXT("AbilitySystemComponent"));
 	// Then we set the component to be replicated and set the replication mode to Mixed.
 	// Replication mode defines what kind of things should be replicated from server to client.
 	// Mixed means a lot of things will be replicated, documentation recommends mixed for characters but minimal for enemies
@@ -61,6 +62,56 @@ UAbilitySystemComponent* AN_Character_Base::GetAbilitySystemComponent() const
 	return AbilitySystemComponent;
 }
 
+TArray<FGameplayAbilitySpecHandle> AN_Character_Base::GrantAbilities(TArray<TSubclassOf<UGameplayAbility>> AbilitiesToGrant)
+{
+	// If we dont have a valid ASC or we aren't on the server then we return an empty array
+	if (!AbilitySystemComponent || !HasAuthority())
+	{
+		return TArray<FGameplayAbilitySpecHandle>();
+
+	}
+
+	TArray<FGameplayAbilitySpecHandle> AbilityHandles;
+
+	for (TSubclassOf<UGameplayAbility> Ability : AbilitiesToGrant)
+	{
+		// This will loop over the abilites and grant them to the character, "this" refers to the file we're in
+		// so the character base or our BP_PlayerCharacter
+		FGameplayAbilitySpecHandle SpecHandle = AbilitySystemComponent->GiveAbility(FGameplayAbilitySpec(Ability, 1, -1, this));
+		AbilityHandles.Add(SpecHandle);
+	}
+
+	SendAbilitiesChangedEvent();
+	return AbilityHandles;
+}
+
+void AN_Character_Base::RemoveAbilities(TArray<FGameplayAbilitySpecHandle> AbilityHandlesToRemove)
+{
+	if (!AbilitySystemComponent || !HasAuthority())
+	{
+		return;
+	}
+
+	for (FGameplayAbilitySpecHandle AbilityHandle : AbilityHandlesToRemove)
+	{
+		AbilitySystemComponent->ClearAbility(AbilityHandle);
+	}
+
+	SendAbilitiesChangedEvent();
+}
+
+void AN_Character_Base::SendAbilitiesChangedEvent()
+{
+	FGameplayEventData EventData;
+	EventData.EventTag = FGameplayTag::RequestGameplayTag(FName("Event.AbilitiesChanged"));
+	EventData.Instigator = this;
+	EventData.Target = this;
+
+	UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, EventData.EventTag, EventData);
+}
+
+
+
 // Called when the game starts or when spawned
 void AN_Character_Base::BeginPlay()
 {
@@ -86,11 +137,13 @@ void AN_Character_Base::PossessedBy(AController* NewController)
 {
 	// Call the super which is the parent implementation 
 	Super::PossessedBy(NewController);
+
 	// This is called on the server when the AIController possesses the enemy
 	if (AbilitySystemComponent)
 	{
 		// If the Ability System Component is valid call the InitAbilityActorInfo function
 		AbilitySystemComponent->InitAbilityActorInfo(this, this);
+		GrantAbilities(StartingAbilities);
 	}
 }
 
